@@ -1,6 +1,6 @@
--tää ottaa viel noi aikataulutiedot hassusti mut pitää  kattoo johtuuko se siitä et luen ne väärin vai onko apikutsu väärin
--lisää tohon aikataulun mukasten saapumis- ja lähtöaikojen lisäks live-ennusteet
+-korjaa aikataulutietojen järjestys: johtuuko se siitä et luen ne väärin vai onko apikutsu väärin?
 -huomioi peruutetut vuorot
 -tyylit
 -yleistä koodin kaunistamista
 -ehkä downshift-autocomplete hakupalkkiin?
+-tee oma luokka taulukoille ja periytä tarvittava Trains-yläluokasta
