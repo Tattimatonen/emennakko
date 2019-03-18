@@ -77,7 +77,6 @@ class Trains extends React.Component {
             .then(response => {
                 this.setState({
                     stations: response.data
-                }, () => {
                 });
             });
     }
