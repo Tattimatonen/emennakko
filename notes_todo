@@ -4,3 +4,4 @@
 -tyylit
 -yleistä koodin kaunistamista
 -ehkä downshift-autocomplete hakupalkkiin?
+-tee oma luokka taulukoille ja periytä tarvittava Trains-yläluokasta
