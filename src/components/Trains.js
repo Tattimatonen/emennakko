@@ -85,8 +85,8 @@ class Trains extends React.Component {
     //ottaa syötteenä aseman nimen ja palauttaa sen asemakoodin
     stationToCode(station) {
         for (var i = 0; i < this.state.stations.length; i++) {
-            if (Object.values(this.state.stations[i])[2].toLowerCase() === station.toLowerCase()) {
-                return Object.values(this.state.stations[i])[3];
+            if (this.state.stations[i].stationName.toLowerCase() === station.toLowerCase()) {
+                return this.state.stations[i].stationShortCode;
             }
         }
     }
@@ -94,46 +94,58 @@ class Trains extends React.Component {
     //ottaa syötteenä aseman koodin ja palauttaa sen nimen
     codeToStation(stationCode) {
         for (var i = 0; i < this.state.stations.length; i++) {
-            if (Object.values(this.state.stations[i])[3] === stationCode) {
+            if (this.state.stations[i].stationShortCode === stationCode) {
                 //splitataan, jotta päästään eroon lopun mahdollisista "asema" tai "ratapiha" -päätteistä, joita esimerkissä ei ollut
-                return Object.values(this.state.stations[i])[2]; //.split(" ")[0]
+                return this.state.stations[i].stationName; //.split(" ")[0]
             }
         }
     }
 
 
     //aikataulun mukainen aikatauluhaku saapuville junille, entä live estimate + jos cancelled
-    getArrivalTime(trainNumber, stationCode) {
+    getTime(trainNumber, stationCode, type, scheduled) {
         for (var i = 0; i < this.state.arrivals.length; i++) {
             //matchataan junan numero (oletettavasti uniikki) siihen, jonka aikatauluja haetaan
-            if (Object.values(this.state.arrivals[i])[0] === trainNumber) {
+            if (this.state.arrivals[i].trainNumber === trainNumber) {
                 let train = this.state.arrivals[i];
                 for (let j = 0; j < train.timeTableRows.length; j++) {
                     //matchataan oikea asema (se, joka on hakukentässä) ja katsotaan, että aikataulutiedon tyyppi on saapuminen
-                    if (Object.values(train.timeTableRows[j])[0] === stationCode && Object.values(train.timeTableRows[j])[3] === "ARRIVAL") {
-                        return (Object.values(train.timeTableRows[j])[8]).slice(11, 16); //NOTE: EI AINA RIVILLÄ 8
+                    if (train.timeTableRows[j].stationShortCode === stationCode && train.timeTableRows[j].type === type) {
+                        if (scheduled === true) {
+                            if(!this.isLate(trainNumber, stationCode, type)) {
+                                return (train.timeTableRows[j].scheduledTime).slice(0, 16);
+                            }
+                            else {
+                                let sliced = (train.timeTableRows[j].scheduledTime).slice(11, 16);
+                                return "(" + sliced + ")";
+                            }
+                        }
+                        else if (train.timeTableRows[j].liveEstimateTime && train.timeTableRows[j].liveEstimateTime !== train.timeTableRows[j].scheduledTime){
+                            return (train.timeTableRows[j].liveEstimateTime).slice(0, 16);
+                        }
                     }
                 }
             }
         }
-        return "ERROR";
+        return "";
     }
 
-    //aikataulun mukainen aikatauluhaku lähteville junille, entä live estimate + jos cancelled
-    getDepartureTime(trainNumber, stationCode) {
+    isLate(trainNumber, stationCode, type) {
         for (var i = 0; i < this.state.arrivals.length; i++) {
             //matchataan junan numero (oletettavasti uniikki) siihen, jonka aikatauluja haetaan
-            if (Object.values(this.state.arrivals[i])[0] === trainNumber) {
+            if (this.state.arrivals[i].trainNumber === trainNumber) {
                 let train = this.state.arrivals[i];
                 for (let j = 0; j < train.timeTableRows.length; j++) {
-                    //matchataan oikea asema (se, joka on hakukentässä) ja katsotaan, että aikataulutiedon tyyppi on lähteminen
-                    if (Object.values(train.timeTableRows[j])[0] === stationCode && Object.values(train.timeTableRows[j])[3] === "DEPARTURE") {
-                        return (Object.values(train.timeTableRows[j])[8]).slice(11, 16);
+                    //matchataan oikea asema (se, joka on hakukentässä) ja katsotaan, että aikataulutiedon tyyppi on saapuminen
+                    if (train.timeTableRows[j].stationShortCode === stationCode && train.timeTableRows[j].type === type) {
+                        if (train.timeTableRows[j].liveEstimateTime && train.timeTableRows[j].liveEstimateTime !== train.timeTableRows[j].scheduledTime) {
+                            return true;
+                        }
                     }
                 }
             }
         }
-        return "ERROR";
+        return false;
     }
 
     render() {
@@ -208,7 +220,16 @@ class Trains extends React.Component {
                                     <TableCell>{row.trainType + ' ' + row.trainNumber}</TableCell>
                                     <TableCell>{this.codeToStation(row.timeTableRows[0].stationShortCode)}</TableCell>
                                     <TableCell>{this.codeToStation(row.timeTableRows[row.timeTableRows.length-1].stationShortCode)}</TableCell>
-                                    <TableCell>{this.getArrivalTime(row.trainNumber, this.state.stationCode)}</TableCell>
+                                    <TableCell>
+                                        <div className={this.isLate(row.trainNumber, this.state.stationCode, "ARRIVAL") ? classes.lateTrain : classes.onTimeTrain}>
+                                            {this.getTime(row.trainNumber, this.state.stationCode, "ARRIVAL", false)}
+                                        </div>
+                                        <div className={this.isLate(row.trainNumber, this.state.stationCode, "ARRIVAL") ? classes.liveTime : classes.onTimeTrain}>
+                                            {this.getTime(row.trainNumber, this.state.stationCode, "ARRIVAL", true)}
+                                        </div>
+                                        <div className={classes.cancelled}>
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
                             ))
                         }</TableBody>
@@ -231,8 +252,16 @@ class Trains extends React.Component {
                                     <TableCell>{row.trainType + ' ' + row.trainNumber}</TableCell>
                                     <TableCell>{this.codeToStation(row.timeTableRows[0].stationShortCode)}</TableCell>
                                     <TableCell>{this.codeToStation(row.timeTableRows[row.timeTableRows.length-1].stationShortCode)}</TableCell>
-                                    <TableCell>{this.getDepartureTime(row.trainNumber, this.state.stationCode)}</TableCell>
-                                </TableRow>
+                                    <TableCell>
+                                        <div className={this.isLate(row.trainNumber, this.state.stationCode, "DEPARTURE") ? classes.lateTrain : classes.onTimeTrain}>
+                                            {this.getTime(row.trainNumber, this.state.stationCode, "DEPARTURE", true)}
+                                        </div>
+                                        <div className={classes.liveTime}>
+                                            {this.getTime(row.trainNumber, this.state.stationCode, "DEPARTURE", false)}
+                                        </div>
+                                        <div className={classes.cancelled}>
+                                        </div>
+                                    </TableCell>                                </TableRow>
                             ))
                         }</TableBody>
                     </Table>
@@ -252,6 +281,18 @@ const styles = theme => ({
     text: {
         margin: 20,
         marginBottom: 0,
+    },
+    onTimeTrain: {
+        color: '#000000',
+    },
+    lateTrain: {
+        color: '#FF0000',
+    },
+    cancelled: {
+        color: '#FF0000',
+    },
+    liveTime: {
+        fontSize: 11,
     },
     search: {
         marginLeft: 20,
@@ -291,9 +332,11 @@ const styles = theme => ({
             borderTop: '1px solid #e8e8e8',
             borderLeft: '1px solid #e8e8e8',
             borderRight: '1px solid #e8e8e8',
+            borderbottom: '6px solid #000000',
         },
-        '&focus': {
+        '&:focus': {
             color: '#000000',
+            opacity: 1,
         },
     },
     tabSelected: {},
