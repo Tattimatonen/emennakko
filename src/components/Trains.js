@@ -42,9 +42,8 @@ class Trains extends React.Component {
     }
 
     handleClickClear = () => {
-        console.log(this.getIdx(this.state.arrivals[0], this.state.stationCode));
-
-        //this.setState({ station: "", stationCode: "", arrivals: [], departures: [] });
+        //console.log(this.getIdx(this.state.arrivals[0], this.state.stationCode));
+        this.setState({ station: "", stationCode: "", arrivals: [], departures: [] });
     };
 
     handleTabChange = (event, tabValue) => {
@@ -399,6 +398,7 @@ const styles = theme => ({
         backgroundColor: '#35852a',
     },
     tabRoot: {
+        borderRadius: '10px 10px 0px 0px',
         textTransform: 'initial',
         minWidth: 72,
         color: '#35852a',
