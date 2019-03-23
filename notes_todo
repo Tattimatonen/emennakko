@@ -1,6 +1,9 @@
--korjaa aikataulutietojen järjestys: johtuuko se siitä et luen ne väärin vai onko apikutsu väärin?
+Laskevassa tärkeysjärjestyksessä:
+
+-korjaa aikataulutietojen järjestys: tee lajittelufunktio
+-näytä live estimate vain, jos se on muuttunut "huonompaan suuntaan" (esim. saapuvilla -> saapuu myöhemmin)
 -huomioi peruutetut vuorot
 -tyylit
--yleistä koodin kaunistamista
 -ehkä downshift-autocomplete hakupalkkiin?
+-yleistä koodin kaunistamista
 -tee oma luokka taulukoille ja periytä tarvittava Trains-yläluokasta
