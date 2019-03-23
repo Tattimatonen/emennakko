@@ -31,8 +31,20 @@ class Trains extends React.Component {
         }
     }
 
+    //haetaan tässä vaiheessa tiedot asemien nimien käsittelyyn
+    componentDidMount() {
+        axios.get('https://rata.digitraffic.fi/api/v1/metadata/stations')
+            .then(response => {
+                this.setState({
+                    stations: response.data
+                });
+            });
+    }
+
     handleClickClear = () => {
-        this.setState({ station: "", stationCode: "", arrivals: [], departures: [] });
+        console.log(this.getIdx(this.state.arrivals[0], this.state.stationCode));
+
+        //this.setState({ station: "", stationCode: "", arrivals: [], departures: [] });
     };
 
     handleTabChange = (event, tabValue) => {
@@ -44,24 +56,26 @@ class Trains extends React.Component {
             [station]: event.target.value,
             stationCode: this.stationToCode(event.target.value),
         }, () => {
-            axios.get('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationCode + '?arrived_trains=0&arriving_trains=15&departed_trains=0&departing_trains=0&include_nonstopping=false')
+            axios.get('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationCode + '?arrived_trains=0&arriving_trains=50&departed_trains=0&departing_trains=0&include_nonstopping=false')
                 .then(response => {
 
-                    let filtered = response.data.filter(function(obj) {
-                        //ei rahtijunia, vetureita eikä vaihtotyötä, oletuksena softa on matkustajille. tiedä sitten mitä muut junatyypit ovat
-                        return obj.trainCategory !== "Cargo" && obj.trainCategory !== "Locomotive" && obj.trainCategory !== "Shunting";
+                    let filtered = response.data.filter(function(train) {
+                        //ei rahtijunia, vetureita eikä vaihtotyötä, oletuksena softa on matkustajille
+                        return train.trainCategory !== "Cargo" && train.trainCategory !== "Locomotive" && train.trainCategory !== "Shunting";
                     });
+
+                    let filteredAndSorted = this.sortTrains(filtered, this.state.stationCode);
+                    console.log(filteredAndSorted);
 
                     this.setState({
                         arrivals: filtered
                     });
                 });
 
-            axios.get('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationCode + '?arrived_trains=0&arriving_trains=0&departed_trains=0&departing_trains=15&include_nonstopping=false')
+            axios.get('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationCode + '?arrived_trains=0&arriving_trains=0&departed_trains=0&departing_trains=50&include_nonstopping=false')
                 .then(response => {
 
                     let filtered = response.data.filter(function(obj) {
-                        //ei rahtijunia, vetureita eikä vaihtotyötä, oletuksena softa on matkustajille. tiedä sitten mitä muut junatyypit ovat
                         return obj.trainCategory !== "Cargo" && obj.trainCategory !== "Locomotive" && obj.trainCategory !== "Shunting";
                     });
 
@@ -72,19 +86,10 @@ class Trains extends React.Component {
         });
     };
 
-    componentDidMount() {
-        axios.get('https://rata.digitraffic.fi/api/v1/metadata/stations')
-            .then(response => {
-                this.setState({
-                    stations: response.data
-                });
-            });
-    }
-
     //ottaa syötteenä aseman nimen ja palauttaa sen asemakoodin
     stationToCode(station) {
-        for (var i = 0; i < this.state.stations.length; i++) {
-            if (this.state.stations[i].stationName.toLowerCase() === station.toLowerCase()) {
+        for (let i = 0; i < this.state.stations.length; i++) {
+            if (this.state.stations[i].stationName.split(" ")[0].toLowerCase() === station.toLowerCase()) {
                 return this.state.stations[i].stationShortCode;
             }
         }
@@ -92,35 +97,102 @@ class Trains extends React.Component {
 
     //ottaa syötteenä aseman koodin ja palauttaa sen nimen
     codeToStation(stationCode) {
-        for (var i = 0; i < this.state.stations.length; i++) {
+        for (let i = 0; i < this.state.stations.length; i++) {
             if (this.state.stations[i].stationShortCode === stationCode) {
                 //splitataan, jotta päästään eroon lopun mahdollisista "asema" tai "ratapiha" -päätteistä, joita esimerkissä ei ollut
-                return this.state.stations[i].stationName; //.split(" ")[0]
+                return this.state.stations[i].stationName.split(" ")[0];
             }
         }
     }
 
+    //palauttaa indeksin, jossa juna on tietyllä asemalla sen aikataulutiedoissa
+    getIdx(train, stationCode) {
+        for (let i = 0; i < train.timeTableRows.length; i++) {
+            //matchataan oikea asema (se, joka on hakukentässä)
+            if (train.timeTableRows[i].stationShortCode === stationCode) {
+                return i;
+            }
+        }
+    }
+
+    //lajitellaan haetut junat uudelleen nousevan saapumis/lähtemisajan määrätylle asemalle perusteella
+    sortTrains(trainArray, stationCode) {
+
+        //simppeli bubblesort
+        /**for (let i = 0; i < trainArray.length; i++) {
+            for (let j = 0; j < (trainArray.length - i - 1); j++) {
+                if((trainArray[j].timeTableRows[this.getIdx(trainArray[j], stationCode)].scheduledTime) > (trainArray[j+1].timeTableRows[this.getIdx(trainArray[j], stationCode)].scheduledTime)) {
+                    var tmp = trainArray[j];
+                    trainArray[j] = trainArray[j+1];
+                    trainArray[j+1] = tmp;
+                }
+            }
+        }**/
+
+        trainArray.sort(function(a,b) {
+            if (a.timeTableRows[0].scheduledTime < b.timeTableRows[0].scheduledTime) {
+                return -1;
+            }
+            else if (a.timeTableRows[0].scheduledTime > b.timeTableRows[0].scheduledTime) {
+                return 1;
+            }
+            else {
+                return 0;
+            }
+        });
+
+        return trainArray;
+    }
+
+    //palauttaa true, jos juna on peruttu ja false, jos ei
+    isCancelled(trainNumber, type) {
+        let trainArray;
+
+        if (type === "ARRIVAL") {
+            trainArray = this.state.arrivals;
+        }
+        else {
+            trainArray = this.state.departures;
+        }
+
+        for (let i = 0; i < trainArray.length; i++) {
+            //matchataan junan numero siihen, jonka perumistietoja haetaan
+            if (trainArray[i].trainNumber === trainNumber) {
+                let train = trainArray[i];
+                return train.cancelled;
+            }
+        }
+    }
 
     //aikataulun mukainen aikatauluhaku saapuville junille, entä live estimate + jos cancelled
     getTime(trainNumber, stationCode, type, scheduled) {
-        for (var i = 0; i < this.state.arrivals.length; i++) {
+        let trainArray;
+        if (type === "ARRIVAL") {
+            trainArray = this.state.arrivals;
+        }
+        else {
+            trainArray = this.state.departures;
+        }
+
+        for (let i = 0; i < trainArray.length; i++) {
             //matchataan junan numero (oletettavasti uniikki) siihen, jonka aikatauluja haetaan
-            if (this.state.arrivals[i].trainNumber === trainNumber) {
-                let train = this.state.arrivals[i];
+            if (trainArray[i].trainNumber === trainNumber) {
+                let train = trainArray[i];
                 for (let j = 0; j < train.timeTableRows.length; j++) {
-                    //matchataan oikea asema (se, joka on hakukentässä) ja katsotaan, että aikataulutiedon tyyppi on saapuminen
+                    //matchataan oikea asema (se, joka on hakukentässä) ja katsotaan, että aikataulutiedon tyyppi on oikea
                     if (train.timeTableRows[j].stationShortCode === stationCode && train.timeTableRows[j].type === type) {
                         if (scheduled === true) {
-                            if(!this.isLate(trainNumber, stationCode, type)) {
-                                return (train.timeTableRows[j].scheduledTime).slice(0, 16);
-                            }
-                            else {
+                            if(this.isLate(trainNumber, stationCode, type)) {
                                 let sliced = (train.timeTableRows[j].scheduledTime).slice(11, 16);
                                 return "(" + sliced + ")";
                             }
+                            else {
+                                return (train.timeTableRows[j].scheduledTime).slice(11, 16);
+                            }
                         }
-                        else if (train.timeTableRows[j].liveEstimateTime && train.timeTableRows[j].liveEstimateTime !== train.timeTableRows[j].scheduledTime){
-                            return (train.timeTableRows[j].liveEstimateTime).slice(0, 16);
+                        else if (train.timeTableRows[j].liveEstimateTime && (train.timeTableRows[j].differenceInMinutes > 0)) {
+                            return (train.timeTableRows[j].liveEstimateTime).slice(11, 16);
+                            //pelkillä minuuteilla sliced: (train.timeTableRows[j].liveEstimateTime).slice(0, 17) + (train.timeTableRows[j].liveEstimateTime).slice(21);
                         }
                     }
                 }
@@ -130,14 +202,22 @@ class Trains extends React.Component {
     }
 
     isLate(trainNumber, stationCode, type) {
-        for (var i = 0; i < this.state.arrivals.length; i++) {
-            //matchataan junan numero (oletettavasti uniikki) siihen, jonka aikatauluja haetaan
-            if (this.state.arrivals[i].trainNumber === trainNumber) {
-                let train = this.state.arrivals[i];
+        let trainArray;
+        if (type === "ARRIVAL") {
+            trainArray = this.state.arrivals;
+        }
+        else {
+            trainArray = this.state.departures;
+        }
+
+        for (var i = 0; i < trainArray.length; i++) {
+            //matchataan junan numero siihen, jonka aikatauluja haetaan
+            if (trainArray[i].trainNumber === trainNumber) {
+                let train = trainArray[i];
                 for (let j = 0; j < train.timeTableRows.length; j++) {
-                    //matchataan oikea asema (se, joka on hakukentässä) ja katsotaan, että aikataulutiedon tyyppi on saapuminen
+                    //matchataan oikea asema ja katsotaan, että aikataulutiedon tyyppi on oikea
                     if (train.timeTableRows[j].stationShortCode === stationCode && train.timeTableRows[j].type === type) {
-                        if (train.timeTableRows[j].liveEstimateTime && train.timeTableRows[j].liveEstimateTime !== train.timeTableRows[j].scheduledTime) {
+                        if (train.timeTableRows[j].liveEstimateTime && (train.timeTableRows[j].differenceInMinutes > 0)) {
                             return true;
                         }
                     }
@@ -214,16 +294,16 @@ class Trains extends React.Component {
                             </TableRow>
                         </TableHead>
                         <TableBody>{
-                            arrivals.map( row => (
-                                <TableRow className={classes.row} key={row.trainNumber}>
+                            arrivals.slice(0, 10).map( row => (
+                                <TableRow className={this.isCancelled(row.trainNumber, "ARRIVAL") ? classes.rowCancelled : classes.row} key={row.trainNumber} >
                                     <TableCell>{row.trainType + ' ' + row.trainNumber}</TableCell>
                                     <TableCell>{this.codeToStation(row.timeTableRows[0].stationShortCode)}</TableCell>
                                     <TableCell>{this.codeToStation(row.timeTableRows[row.timeTableRows.length-1].stationShortCode)}</TableCell>
                                     <TableCell>
-                                        <div className={this.isLate(row.trainNumber, this.state.stationCode, "ARRIVAL") ? classes.lateTrain : classes.onTimeTrain}>
+                                        <div className={classes.liveTime}>
                                             {this.getTime(row.trainNumber, this.state.stationCode, "ARRIVAL", false)}
                                         </div>
-                                        <div className={this.isLate(row.trainNumber, this.state.stationCode, "ARRIVAL") ? classes.liveTime : classes.onTimeTrain}>
+                                        <div className={this.isLate(row.trainNumber, this.state.stationCode, "ARRIVAL") ? classes.lateTrain : classes.onTimeTrain}>
                                             {this.getTime(row.trainNumber, this.state.stationCode, "ARRIVAL", true)}
                                         </div>
                                         <div className={classes.cancelled}>
@@ -246,21 +326,22 @@ class Trains extends React.Component {
                             </TableRow>
                         </TableHead>
                         <TableBody>{
-                            departures.map( row => (
-                                <TableRow className={classes.row} key={row.trainNumber}>
+                            departures.slice(0, 10).map( row => (
+                                <TableRow className={this.isCancelled(row.trainNumber, "DEPARTURE") ? classes.rowCancelled : classes.row} key={row.trainNumber} >
                                     <TableCell>{row.trainType + ' ' + row.trainNumber}</TableCell>
                                     <TableCell>{this.codeToStation(row.timeTableRows[0].stationShortCode)}</TableCell>
                                     <TableCell>{this.codeToStation(row.timeTableRows[row.timeTableRows.length-1].stationShortCode)}</TableCell>
                                     <TableCell>
-                                        <div className={this.isLate(row.trainNumber, this.state.stationCode, "DEPARTURE") ? classes.lateTrain : classes.onTimeTrain}>
-                                            {this.getTime(row.trainNumber, this.state.stationCode, "DEPARTURE", true)}
-                                        </div>
                                         <div className={classes.liveTime}>
                                             {this.getTime(row.trainNumber, this.state.stationCode, "DEPARTURE", false)}
                                         </div>
+                                        <div className={this.isLate(row.trainNumber, this.state.stationCode, "DEPARTURE") ? classes.lateTrain : classes.onTimeTrain}>
+                                            {this.getTime(row.trainNumber, this.state.stationCode, "DEPARTURE", true)}
+                                        </div>
                                         <div className={classes.cancelled}>
                                         </div>
-                                    </TableCell>                                </TableRow>
+                                    </TableCell>
+                                </TableRow>
                             ))
                         }</TableBody>
                     </Table>
@@ -277,21 +358,23 @@ const styles = theme => ({
             backgroundColor: '#f3f3f3',
         },
     },
+    rowCancelled: {
+        '&:nth-of-type(odd)': {
+            backgroundColor: '#f3f3f3',
+        },
+        color: '#444444',
+    },
     text: {
         margin: 20,
         marginBottom: 0,
     },
     onTimeTrain: {
-        color: '#000000',
     },
     lateTrain: {
-        color: '#FF0000',
-    },
-    cancelled: {
-        color: '#FF0000',
+        fontSize: 11,
     },
     liveTime: {
-        fontSize: 11,
+        color: '#FF0000',
     },
     search: {
         marginLeft: 20,
