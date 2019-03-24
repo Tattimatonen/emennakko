@@ -21,6 +21,15 @@ class TrainTable extends Component {
         }
     }
 
+    static getTrainName(train) {
+        if (train.commuterLineID !== "") {
+            return "Commuter train " + train.commuterLineID;
+        }
+        else {
+            return train.trainType + ' ' + train.trainNumber;
+        }
+    }
+
     //aikataulun mukainen aikatauluhaku saapuville junille, entä live estimate + jos cancelled
     getTime(trainNumber, stationCode, type, scheduled) {
         let trainArray = this.props.trainArray;
@@ -47,21 +56,21 @@ class TrainTable extends Component {
                             //date-objektin käyttäminen tässä ottaa paikallisen aikavyöhykkeen huomioon
                             returnedTime = new Date(train.timeTableRows[j].scheduledTime);
 
-                            return "(" + this.timeToString(returnedTime) + ")";
+                            return "(" + TrainTable.timeToString(returnedTime) + ")";
                         }
 
                         //jos juna on ajallaan viralliseen aikatauluun
                         else if (scheduled === true) {
                             returnedTime = new Date(train.timeTableRows[j].scheduledTime);
 
-                            return this.timeToString(returnedTime);
+                            return TrainTable.timeToString(returnedTime);
                         }
 
                         //jos haetaan live estimate -aikaa
                         else if (train.timeTableRows[j].liveEstimateTime && (train.timeTableRows[j].differenceInMinutes > 0)) {
                             returnedTime = new Date(train.timeTableRows[j].liveEstimateTime);
 
-                            return this.timeToString(returnedTime);
+                            return TrainTable.timeToString(returnedTime);
                         }
                     }
                 }
@@ -71,7 +80,7 @@ class TrainTable extends Component {
     }
 
     //aikatulosteen korjausta yllä olevaan getTime-funktioon
-    timeToString(time) {
+    static timeToString(time) {
         let hours = time.getHours();
         if (hours < 10) {
             hours = "0" + hours;
@@ -135,7 +144,7 @@ class TrainTable extends Component {
                 <TableBody>{
                     this.props.trainArray.slice(0, 10).map( row => (
                         <TableRow className={this.isCancelled(row.trainNumber, this.props.type) ? classes.rowCancelled : classes.row} key={row.trainNumber} >
-                            <TableCell>{row.trainType + ' ' + row.trainNumber}</TableCell>
+                            <TableCell>{TrainTable.getTrainName(row)}</TableCell>
                             <TableCell>{this.codeToStation(row.timeTableRows[0].stationShortCode)}</TableCell>
                             <TableCell>{this.codeToStation(row.timeTableRows[row.timeTableRows.length-1].stationShortCode)}</TableCell>
                             <TableCell>
