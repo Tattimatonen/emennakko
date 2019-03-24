@@ -28,7 +28,6 @@ class Trains extends React.Component {
             arrivals: [],
             departures: [],
             tabValue: 0,
-            self: this,
         }
     }
 
@@ -55,16 +54,16 @@ class Trains extends React.Component {
             [station]: event.target.value,
             stationCode: this.stationToCode(event.target.value),
         }, () => {
+            //haetaan reippaasti junia, koska joukosta tullaan karsimaan useita
             axios.get('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationCode + '?arrived_trains=0&arriving_trains=50&departed_trains=0&departing_trains=0&include_nonstopping=false')
                 .then(response => {
 
                     let filtered = response.data.filter(function(train) {
-                        //ei rahtijunia, vetureita eikä vaihtotyötä, oletuksena softa on matkustajille
-                        return train.trainCategory !== "Cargo" && train.trainCategory !== "Locomotive" && train.trainCategory !== "Shunting";
+                        //ei rahtijunia, vetureita, vaihtotyötä eikä ratatöitä - oletuksena softa on matkustajille
+                        return train.trainCategory !== "Cargo" && train.trainCategory !== "Locomotive" && train.trainCategory !== "Shunting" && train.trainCategory !== "On-track machines";
                     });
 
-                    let filteredAndSorted = this.sortTrains(filtered, this.state.stationCode);
-                    console.log(filteredAndSorted);
+                    this.sortTrains(filtered, this.state.stationCode, "ARRIVAL");
 
                     this.setState({
                         arrivals: filtered
@@ -77,6 +76,8 @@ class Trains extends React.Component {
                     let filtered = response.data.filter(function(train) {
                         return train.trainCategory !== "Cargo" && train.trainCategory !== "Locomotive" && train.trainCategory !== "Shunting" && train.trainCategory !== "On-track machines";
                     });
+
+                    this.sortTrains(filtered, this.state.stationCode, "DEPARTURE");
 
                     this.setState({
                         departures: filtered
@@ -117,13 +118,13 @@ class Trains extends React.Component {
     //lajitellaan haetut junat uudelleen nousevan saapumis/lähtemisajan määrätylle asemalle perusteella
     sortTrains(trainArray, stationCode) {
 
-        //simppeli bubblesort
+        //simppeli bubblesort, vaikka se ei ole tehokas, se riittänee näin pienen junajoukon lajitteluun
         for (let i = 0; i < trainArray.length; i++) {
             for (let j = 0; j < (trainArray.length - i - 1); j++) {
-                let indexA = this.state.self.getIdx(trainArray[j], stationCode);
-                let indexB = this.state.self.getIdx(trainArray[j+1], stationCode);
+                let indexA = this.getIdx(trainArray[j], stationCode);
+                let indexB = this.getIdx(trainArray[j+1], stationCode);
 
-                if((trainArray[j].timeTableRows[indexA].scheduledTime) > (trainArray[j+1].timeTableRows[indexB].scheduledTime)) {
+                if ((trainArray[j].timeTableRows[indexA].scheduledTime) > (trainArray[j+1].timeTableRows[indexB].scheduledTime)) {
                     let tmp = trainArray[j];
                     trainArray[j] = trainArray[j+1];
                     trainArray[j+1] = tmp;
@@ -165,32 +166,64 @@ class Trains extends React.Component {
             trainArray = this.state.departures;
         }
 
+        let returnedTime;
+
         for (let i = 0; i < trainArray.length; i++) {
+
             //matchataan junan numero (oletettavasti uniikki) siihen, jonka aikatauluja haetaan
             if (trainArray[i].trainNumber === trainNumber) {
+
                 let train = trainArray[i];
-                console.log(this.isCancelled(train.trainNumber, type));
                 for (let j = 0; j < train.timeTableRows.length; j++) {
+
                     //matchataan oikea asema (se, joka on hakukentässä) ja katsotaan, että aikataulutiedon tyyppi on oikea
                     if (train.timeTableRows[j].stationShortCode === stationCode && train.timeTableRows[j].type === type) {
-                        if (scheduled === true) {
-                            if(this.isLate(trainNumber, stationCode, type)) {
-                                let sliced = (train.timeTableRows[j].scheduledTime).slice(11, 16);
-                                return "(" + sliced + ")";
-                            }
-                            else {
-                                return (train.timeTableRows[j].scheduledTime).slice(11, 16);
-                            }
+
+                        //ikävän monta sisäkkäistä if-lausetta, mutta kirjoitan mieluummin näin kuin yhdistän yhteen if-lauseeseen useampia parametrejä
+                        //jos tekisin uuden funktion tähän, pitäisi kaikki tämän funktionkin parametrit antaa eteenpäin, joten ei juuri järkeä
+
+                        //jos juna on myöhässä virallisesta aikataulusta
+                        if(scheduled === true && this.isLate(trainNumber, stationCode, type)) {
+
+                            //date-objektin käyttäminen tässä ottaa paikallisen aikavyöhykkeen huomioon
+                            returnedTime = new Date(train.timeTableRows[j].scheduledTime);
+
+                            return "(" + this.timeToString(returnedTime) + ")";
                         }
+
+                        //jos juna on ajallaan viralliseen aikatauluun
+                        else if (scheduled === true) {
+                            returnedTime = new Date(train.timeTableRows[j].scheduledTime);
+
+                            return this.timeToString(returnedTime);
+                        }
+
+                        //jos haetaan live estimate -aikaa
                         else if (train.timeTableRows[j].liveEstimateTime && (train.timeTableRows[j].differenceInMinutes > 0)) {
-                            return (train.timeTableRows[j].liveEstimateTime).slice(11, 16);
-                            //pelkillä minuuteilla sliced: (train.timeTableRows[j].liveEstimateTime).slice(0, 17) + (train.timeTableRows[j].liveEstimateTime).slice(21);
+                            returnedTime = new Date(train.timeTableRows[j].liveEstimateTime);
+
+                            return this.timeToString(returnedTime);
                         }
                     }
                 }
             }
         }
         return "";
+    }
+
+    //aikatulosteen korjausta yllä olevaan getTime-funktioon
+    timeToString(time) {
+        let hours = time.getHours();
+        if (hours < 10) {
+            hours = "0" + hours;
+        }
+
+        let minutes = time.getMinutes();
+        if (minutes < 10) {
+            minutes = "0" + minutes;
+        }
+
+        return hours + ":" + minutes;
     }
 
     //palauttaa true, jos haettu juna saapuu/lähtee myöhässä annetulla asemalla; false jos ei
