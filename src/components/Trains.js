@@ -74,8 +74,8 @@ class Trains extends React.Component {
             axios.get('https://rata.digitraffic.fi/api/v1/live-trains/station/' + this.state.stationCode + '?arrived_trains=0&arriving_trains=0&departed_trains=0&departing_trains=50&include_nonstopping=false')
                 .then(response => {
 
-                    let filtered = response.data.filter(function(obj) {
-                        return obj.trainCategory !== "Cargo" && obj.trainCategory !== "Locomotive" && obj.trainCategory !== "Shunting";
+                    let filtered = response.data.filter(function(train) {
+                        return train.trainCategory !== "Cargo" && train.trainCategory !== "Locomotive" && train.trainCategory !== "Shunting";
                     });
 
                     this.setState({
@@ -200,6 +200,7 @@ class Trains extends React.Component {
         return "";
     }
 
+    //palauttaa true, jos haettu juna saapuu/lähtee myöhässä annetulla asemalla; false jos ei
     isLate(trainNumber, stationCode, type) {
         let trainArray;
         if (type === "ARRIVAL") {
@@ -227,7 +228,6 @@ class Trains extends React.Component {
     }
 
     render() {
-
         const {classes} = this.props;
         const {tabValue} = this.state;
         const {arrivals} = this.state;
@@ -248,6 +248,11 @@ class Trains extends React.Component {
                             margin="dense"
                             variant="outlined"
                             InputProps={{
+                                classes: {
+                                root: classes.searchFocused,
+                                focused: classes.focused,
+                                notchedOutline: classes.outlined,
+                                },
                                 endAdornment: (
                                     <InputAdornment position="end">
                                         <IconButton
@@ -351,7 +356,7 @@ class Trains extends React.Component {
     }
 }
 
-const styles = theme => ({
+const styles = () => ({
     row: {
         '&:nth-of-type(odd)': {
             backgroundColor: '#f3f3f3',
@@ -378,11 +383,14 @@ const styles = theme => ({
     search: {
         marginLeft: 20,
         marginBottom: 40,
-        borderColor: '#35852a',
         backgroundColor: '#f3f3f3',
-        '&:focus': {
-            borderColor: '#35852a',
-            opacity: 1,
+    },
+    focused: {},
+    outlined: {},
+    searchFocused: {
+        '&$focused $outlined': {
+            borderColor: '#000000',
+            borderWidth: 1,
         },
     },
     root: {
@@ -393,12 +401,13 @@ const styles = theme => ({
     },
     tabsRoot: {
         borderBottom: '1px solid #e8e8e8',
+        //tähän aukko aktiivisen tabin kohdalle?
     },
     tabsIndicator: {
-        backgroundColor: '#35852a',
+        backgroundColor: '#000000',
+        //height: '1px',
     },
     tabRoot: {
-        borderRadius: '10px 10px 0px 0px',
         textTransform: 'initial',
         minWidth: 72,
         color: '#35852a',
@@ -414,7 +423,7 @@ const styles = theme => ({
             borderTop: '1px solid #e8e8e8',
             borderLeft: '1px solid #e8e8e8',
             borderRight: '1px solid #e8e8e8',
-            borderbottom: '6px solid #000000',
+            borderRadius: '10px 10px 0px 0px',
         },
         '&:focus': {
             color: '#000000',
@@ -422,9 +431,6 @@ const styles = theme => ({
         },
     },
     tabSelected: {},
-    typography: {
-        padding: theme.spacing.unit * 3,
-    },
 });
 
 function TabContainer(props) {
