@@ -128,9 +128,6 @@ class TrainTable extends Component {
     render() {
         const {classes} = this.props;
 
-        console.log(this.props.stationCode);
-        console.log(this.props.type);
-
         return (
             <Table>
                 <TableHead>

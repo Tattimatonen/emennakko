@@ -2,12 +2,6 @@ import React from 'react';
 import axios from 'axios';
 import {withStyles} from "@material-ui/core";
 
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
-
 import Tabs from '@material-ui/core/Tabs';
 import Tab from '@material-ui/core/Tab';
 
@@ -15,6 +9,8 @@ import TextField from '@material-ui/core/TextField';
 import IconButton from '@material-ui/core/IconButton';
 import InputAdornment from '@material-ui/core/InputAdornment';
 import Clear from '@material-ui/icons/Clear';
+
+import TrainTable from './TrainTable';
 
 class Trains extends React.Component {
 
@@ -95,16 +91,6 @@ class Trains extends React.Component {
         }
     }
 
-    //ottaa syötteenä aseman koodin ja palauttaa sen nimen
-    codeToStation(stationCode) {
-        for (let i = 0; i < this.state.stations.length; i++) {
-            if (this.state.stations[i].stationShortCode === stationCode) {
-                //splitataan, jotta päästään eroon lopun mahdollisista "asema" tai "ratapiha" -päätteistä, joita esimerkissä ei ollut
-                return this.state.stations[i].stationName.split(" asema")[0];
-            }
-        }
-    }
-
     //palauttaa indeksin, jossa juna on tietyllä asemalla sen aikataulutiedoissa
     static getIdx(train, stationCode, type) {
         for (let i = 0; i < train.timeTableRows.length; i++) {
@@ -138,138 +124,9 @@ class Trains extends React.Component {
         return trainArray;
     }
 
-    //palauttaa true, jos juna on peruttu ja false, jos ei
-    isCancelled(trainNumber, type) {
-        let trainArray;
-
-        if (type === "ARRIVAL") {
-            trainArray = this.state.arrivals;
-        }
-        else {
-            trainArray = this.state.departures;
-        }
-
-        for (let i = 0; i < trainArray.length; i++) {
-            //matchataan junan numero siihen, jonka perumistietoja haetaan
-            if (trainArray[i].trainNumber === trainNumber) {
-                let train = trainArray[i];
-                return train.cancelled;
-            }
-        }
-    }
-
-    //aikataulun mukainen aikatauluhaku saapuville junille, entä live estimate + jos cancelled
-    getTime(trainNumber, stationCode, type, scheduled) {
-        let trainArray;
-
-        if (type === "ARRIVAL") {
-            trainArray = this.state.arrivals;
-        }
-        else {
-            trainArray = this.state.departures;
-        }
-
-        let returnedTime;
-
-        for (let i = 0; i < trainArray.length; i++) {
-
-            //matchataan junan numero (oletettavasti uniikki) siihen, jonka aikatauluja haetaan
-            if (trainArray[i].trainNumber === trainNumber) {
-
-                let train = trainArray[i];
-                for (let j = 0; j < train.timeTableRows.length; j++) {
-
-                    //matchataan oikea asema (se, joka on hakukentässä) ja katsotaan, että aikataulutiedon tyyppi on oikea
-                    if (train.timeTableRows[j].stationShortCode === stationCode && train.timeTableRows[j].type === type) {
-
-                        //ikävän monta sisäkkäistä if-lausetta, mutta kirjoitan mieluummin näin kuin yhdistän yhteen if-lauseeseen useampia parametrejä
-                        //jos tekisin uuden funktion tähän, pitäisi kaikki tämän funktionkin parametrit antaa eteenpäin, joten ei juuri järkeä
-
-                        //jos juna on myöhässä virallisesta aikataulusta
-                        if(scheduled === true && this.isLate(trainNumber, stationCode, type)) {
-
-                            //date-objektin käyttäminen tässä ottaa paikallisen aikavyöhykkeen huomioon
-                            returnedTime = new Date(train.timeTableRows[j].scheduledTime);
-
-                            return "(" + Trains.timeToString(returnedTime) + ")";
-                        }
-
-                        //jos juna on ajallaan viralliseen aikatauluun
-                        else if (scheduled === true) {
-                            returnedTime = new Date(train.timeTableRows[j].scheduledTime);
-
-                            return Trains.timeToString(returnedTime);
-                        }
-
-                        //jos haetaan live estimate -aikaa
-                        else if (train.timeTableRows[j].liveEstimateTime && (train.timeTableRows[j].differenceInMinutes > 0)) {
-                            returnedTime = new Date(train.timeTableRows[j].liveEstimateTime);
-
-                            return Trains.timeToString(returnedTime);
-                        }
-                    }
-                }
-            }
-        }
-        return "";
-    }
-
-    //aikatulosteen korjausta yllä olevaan getTime-funktioon
-    static timeToString(time) {
-        let hours = time.getHours();
-        if (hours < 10) {
-            hours = "0" + hours;
-        }
-
-        let minutes = time.getMinutes();
-        if (minutes < 10) {
-            minutes = "0" + minutes;
-        }
-
-        return hours + ":" + minutes;
-    }
-
-    //palauttaa true, jos haettu juna saapuu/lähtee myöhässä annetulla asemalla; false jos ei
-    isLate(trainNumber, stationCode, type) {
-        let trainArray;
-        if (type === "ARRIVAL") {
-            trainArray = this.state.arrivals;
-        }
-        else {
-            trainArray = this.state.departures;
-        }
-
-        for (var i = 0; i < trainArray.length; i++) {
-            //matchataan junan numero siihen, jonka aikatauluja haetaan
-            if (trainArray[i].trainNumber === trainNumber) {
-                let train = trainArray[i];
-                for (let j = 0; j < train.timeTableRows.length; j++) {
-                    //matchataan oikea asema ja katsotaan, että aikataulutiedon tyyppi on oikea
-                    if (train.timeTableRows[j].stationShortCode === stationCode && train.timeTableRows[j].type === type) {
-                        if (train.timeTableRows[j].liveEstimateTime && (train.timeTableRows[j].differenceInMinutes > 0)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    static getTrainName(train) {
-        if (train.commuterLineID !== "") {
-            return "Commuter train " + train.commuterLineID;
-        }
-        else {
-            return train.trainType + ' ' + train.trainNumber;
-        }
-    }
-
     render() {
         const {classes} = this.props;
         const {tabValue} = this.state;
-        const {arrivals} = this.state;
-        const {departures} = this.state;
 
         return(
             <div>
@@ -326,67 +183,21 @@ class Trains extends React.Component {
                 </div>
 
                 {tabValue === 0 && <TabContainer>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Juna</TableCell>
-                                <TableCell>Lähtöasema</TableCell>
-                                <TableCell>Pääteasema</TableCell>
-                                <TableCell>Saapuu</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>{
-                            arrivals.slice(0, 10).map( row => (
-                                <TableRow className={this.isCancelled(row.trainNumber, "ARRIVAL") ? classes.rowCancelled : classes.row} key={row.trainNumber} >
-                                    <TableCell>{Trains.getTrainName(row)}</TableCell>
-                                    <TableCell>{this.codeToStation(row.timeTableRows[0].stationShortCode)}</TableCell>
-                                    <TableCell>{this.codeToStation(row.timeTableRows[row.timeTableRows.length-1].stationShortCode)}</TableCell>
-                                    <TableCell>
-                                        <div className={classes.liveTime}>
-                                            {this.getTime(row.trainNumber, this.state.stationCode, "ARRIVAL", false)}
-                                        </div>
-                                        <div className={this.isLate(row.trainNumber, this.state.stationCode, "ARRIVAL") ? classes.lateTrain : classes.onTimeTrain}>
-                                            {this.getTime(row.trainNumber, this.state.stationCode, "ARRIVAL", true)}
-                                        </div>
-                                        <div className={classes.cancelled}>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        }</TableBody>
-                    </Table>
+                    <TrainTable
+                        trainArray={this.state.arrivals}
+                        stations={this.state.stations}
+                        stationCode={this.state.stationCode}
+                        type={"ARRIVAL"}
+                    />
                 </TabContainer>}
 
                 {tabValue === 1 && <TabContainer>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Juna</TableCell>
-                                <TableCell>Lähtöasema</TableCell>
-                                <TableCell>Pääteasema</TableCell>
-                                <TableCell>Lähtee</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>{
-                            departures.slice(0, 10).map( row => (
-                                <TableRow className={this.isCancelled(row.trainNumber, "DEPARTURE") ? classes.rowCancelled : classes.row} key={row.trainNumber} >
-                                    <TableCell>{Trains.getTrainName(row)}</TableCell>
-                                    <TableCell>{this.codeToStation(row.timeTableRows[0].stationShortCode)}</TableCell>
-                                    <TableCell>{this.codeToStation(row.timeTableRows[row.timeTableRows.length-1].stationShortCode)}</TableCell>
-                                    <TableCell>
-                                        <div className={classes.liveTime}>
-                                            {this.getTime(row.trainNumber, this.state.stationCode, "DEPARTURE", false)}
-                                        </div>
-                                        <div className={this.isLate(row.trainNumber, this.state.stationCode, "DEPARTURE") ? classes.lateTrain : classes.onTimeTrain}>
-                                            {this.getTime(row.trainNumber, this.state.stationCode, "DEPARTURE", true)}
-                                        </div>
-                                        <div className={classes.cancelled}>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        }</TableBody>
-                    </Table>
+                    <TrainTable
+                        trainArray={this.state.departures}
+                        stations={this.state.stations}
+                        stationCode={this.state.stationCode}
+                        type={"DEPARTURE"}
+                    />
                 </TabContainer>}
 
             </div>
@@ -395,28 +206,9 @@ class Trains extends React.Component {
 }
 
 const styles = () => ({
-    row: {
-        '&:nth-of-type(odd)': {
-            backgroundColor: '#f3f3f3',
-        },
-    },
-    rowCancelled: {
-        '&:nth-of-type(odd)': {
-            backgroundColor: '#f3f3f3',
-        },
-        color: '#444444',
-    },
     text: {
         margin: 20,
         marginBottom: 0,
-    },
-    onTimeTrain: {
-    },
-    lateTrain: {
-        fontSize: 11,
-    },
-    liveTime: {
-        color: '#FF0000',
     },
     search: {
         marginLeft: 20,
