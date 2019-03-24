@@ -28,6 +28,7 @@ class Trains extends React.Component {
             arrivals: [],
             departures: [],
             tabValue: 0,
+            self: this,
         }
     }
 
@@ -42,7 +43,6 @@ class Trains extends React.Component {
     }
 
     handleClickClear = () => {
-        //console.log(this.getIdx(this.state.arrivals[0], this.state.stationCode));
         this.setState({ station: "", stationCode: "", arrivals: [], departures: [] });
     };
 
@@ -75,7 +75,7 @@ class Trains extends React.Component {
                 .then(response => {
 
                     let filtered = response.data.filter(function(train) {
-                        return train.trainCategory !== "Cargo" && train.trainCategory !== "Locomotive" && train.trainCategory !== "Shunting";
+                        return train.trainCategory !== "Cargo" && train.trainCategory !== "Locomotive" && train.trainCategory !== "Shunting" && train.trainCategory !== "On-track machines";
                     });
 
                     this.setState({
@@ -88,7 +88,7 @@ class Trains extends React.Component {
     //ottaa syötteenä aseman nimen ja palauttaa sen asemakoodin
     stationToCode(station) {
         for (let i = 0; i < this.state.stations.length; i++) {
-            if (this.state.stations[i].stationName.split(" ")[0].toLowerCase() === station.toLowerCase()) {
+            if (this.state.stations[i].stationName.split(" asema")[0].toLowerCase() === station.toLowerCase()) {
                 return this.state.stations[i].stationShortCode;
             }
         }
@@ -99,7 +99,7 @@ class Trains extends React.Component {
         for (let i = 0; i < this.state.stations.length; i++) {
             if (this.state.stations[i].stationShortCode === stationCode) {
                 //splitataan, jotta päästään eroon lopun mahdollisista "asema" tai "ratapiha" -päätteistä, joita esimerkissä ei ollut
-                return this.state.stations[i].stationName.split(" ")[0];
+                return this.state.stations[i].stationName.split(" asema")[0];
             }
         }
     }
@@ -118,27 +118,18 @@ class Trains extends React.Component {
     sortTrains(trainArray, stationCode) {
 
         //simppeli bubblesort
-        /**for (let i = 0; i < trainArray.length; i++) {
+        for (let i = 0; i < trainArray.length; i++) {
             for (let j = 0; j < (trainArray.length - i - 1); j++) {
-                if((trainArray[j].timeTableRows[this.getIdx(trainArray[j], stationCode)].scheduledTime) > (trainArray[j+1].timeTableRows[this.getIdx(trainArray[j], stationCode)].scheduledTime)) {
-                    var tmp = trainArray[j];
+                let indexA = this.state.self.getIdx(trainArray[j], stationCode);
+                let indexB = this.state.self.getIdx(trainArray[j+1], stationCode);
+
+                if((trainArray[j].timeTableRows[indexA].scheduledTime) > (trainArray[j+1].timeTableRows[indexB].scheduledTime)) {
+                    let tmp = trainArray[j];
                     trainArray[j] = trainArray[j+1];
                     trainArray[j+1] = tmp;
                 }
             }
-        }**/
-
-        trainArray.sort(function(a,b) {
-            if (a.timeTableRows[0].scheduledTime < b.timeTableRows[0].scheduledTime) {
-                return -1;
-            }
-            else if (a.timeTableRows[0].scheduledTime > b.timeTableRows[0].scheduledTime) {
-                return 1;
-            }
-            else {
-                return 0;
-            }
-        });
+        }
 
         return trainArray;
     }
@@ -166,6 +157,7 @@ class Trains extends React.Component {
     //aikataulun mukainen aikatauluhaku saapuville junille, entä live estimate + jos cancelled
     getTime(trainNumber, stationCode, type, scheduled) {
         let trainArray;
+
         if (type === "ARRIVAL") {
             trainArray = this.state.arrivals;
         }
@@ -177,6 +169,7 @@ class Trains extends React.Component {
             //matchataan junan numero (oletettavasti uniikki) siihen, jonka aikatauluja haetaan
             if (trainArray[i].trainNumber === trainNumber) {
                 let train = trainArray[i];
+                console.log(this.isCancelled(train.trainNumber, type));
                 for (let j = 0; j < train.timeTableRows.length; j++) {
                     //matchataan oikea asema (se, joka on hakukentässä) ja katsotaan, että aikataulutiedon tyyppi on oikea
                     if (train.timeTableRows[j].stationShortCode === stationCode && train.timeTableRows[j].type === type) {
