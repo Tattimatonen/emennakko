@@ -1,8 +1,6 @@
 Laskevassa tärkeysjärjestyksessä:
 
--korjaa aikataulutietojen järjestys: tee lajittelufunktio
--huomioi peruutetut vuorot (pitäisi toimia)
--tyylit
 -ehkä downshift-autocomplete hakupalkkiin?
+-tarkista peruutettujen vuorojen näyttämisen toimivuus (pitäisi tosin toimia)
+-tyylien hiomista
 -yleistä koodin kaunistamista
--tee oma luokka taulukoille ja periytä tarvittava Trains-yläluokasta
