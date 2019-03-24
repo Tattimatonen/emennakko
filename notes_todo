@@ -1,8 +1,7 @@
 Laskevassa tärkeysjärjestyksessä:
 
 -korjaa aikataulutietojen järjestys: tee lajittelufunktio
--näytä live estimate vain, jos se on muuttunut "huonompaan suuntaan" (esim. saapuvilla -> saapuu myöhemmin)
--huomioi peruutetut vuorot
+-huomioi peruutetut vuorot (pitäisi toimia)
 -tyylit
 -ehkä downshift-autocomplete hakupalkkiin?
 -yleistä koodin kaunistamista
