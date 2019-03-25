@@ -348,7 +348,8 @@ class Trains extends React.Component {
                                         <div className={this.isLate(row.trainNumber, this.state.stationCode, "ARRIVAL") ? classes.lateTrain : classes.onTimeTrain}>
                                             {this.getTime(row.trainNumber, this.state.stationCode, "ARRIVAL", true)}
                                         </div>
-                                        <div className={classes.cancelled}>
+                                        <div className={classes.liveTime}>
+                                            {this.isCancelled(row.trainNumber) ? "Cancelled" : ""}
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -380,7 +381,8 @@ class Trains extends React.Component {
                                         <div className={this.isLate(row.trainNumber, this.state.stationCode, "DEPARTURE") ? classes.lateTrain : classes.onTimeTrain}>
                                             {this.getTime(row.trainNumber, this.state.stationCode, "DEPARTURE", true)}
                                         </div>
-                                        <div className={classes.cancelled}>
+                                        <div className={classes.liveTime}>
+                                            {this.isCancelled(row.trainNumber) ? "Cancelled" : ""}
                                         </div>
                                     </TableCell>
                                 </TableRow>
