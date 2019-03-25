@@ -135,7 +135,7 @@ class TrainTable extends Component {
                         <TableCell>Juna</TableCell>
                         <TableCell>Lähtöasema</TableCell>
                         <TableCell>Pääteasema</TableCell>
-                        <TableCell>Saapuu</TableCell>
+                        <TableCell>{this.props.type === "ARRIVAL" ? "Saapuu" : "Lähtee"}</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>{

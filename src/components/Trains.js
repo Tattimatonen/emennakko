@@ -199,7 +199,6 @@ class Trains extends React.Component {
                         type={"DEPARTURE"}
                     />
                 </TabContainer>}
-
             </div>
         )
     }
@@ -231,6 +230,7 @@ const styles = () => ({
     },
     tabsRoot: {
         borderBottom: '1px solid #e8e8e8',
+        position: 'relative',
         //tähän aukko aktiivisen tabin kohdalle?
     },
     tabsIndicator: {
