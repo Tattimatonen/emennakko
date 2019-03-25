@@ -315,12 +315,12 @@ class Trains extends React.Component {
                         <Tab
                             label="Saapuvat"
                             disableRipple
-                            classes={{ root: classes.tabRoot, selected: classes.tabSelected }}
+                            classes={{root: classes.tabRoot, selected: classes.tabSelected}}
                         />
                         <Tab
                             label="Lähtevät"
                             disableRipple
-                            classes={{ root: classes.tabRoot, selected: classes.tabSelected }}
+                            classes={{root: classes.tabRoot, selected: classes.tabSelected}}
                         />
                     </Tabs>
                 </div>
@@ -445,7 +445,6 @@ const styles = () => ({
     },
     tabsIndicator: {
         backgroundColor: '#000000',
-        //height: '1px',
     },
     tabRoot: {
         textTransform: 'initial',
