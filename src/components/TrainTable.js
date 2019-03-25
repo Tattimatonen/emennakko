@@ -151,6 +151,9 @@ class TrainTable extends Component {
                                 <div className={this.isLate(row.trainNumber, this.props.stationCode, "ARRIVAL") ? classes.lateTrain : classes.onTimeTrain}>
                                     {this.getTime(row.trainNumber, this.props.stationCode, this.props.type, true)}
                                 </div>
+                                <div className={classes.liveTime}>
+                                    {this.isCancelled(row.trainNumber) ? "Cancelled" : ""}
+                                </div>
                             </TableCell>
                         </TableRow>
                     ))
